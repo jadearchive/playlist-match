@@ -1,7 +1,8 @@
 "use client";
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownToLine, ArrowRight, Check, ChevronDown, CircleHelp, Disc3, Link2, LoaderCircle, Music2, Plus, Search, Users, X } from 'lucide-react';
 import { comparePlaylists, splitArtists, toCsv } from '../lib/compare.mjs';
+import {startAnalytics,trackAnalytics} from './analytics';
 type Track={title:string;artists:string[]};
 type Playlist={title:string;platform:string;tracks:Track[];complete:boolean;total:number|null;warnings:string[];sourceUrl?:string};
 type Entry={input:string;mode:'link'|'text';data:Playlist|null;error:string;loading:boolean};
@@ -69,6 +70,9 @@ export default function Home(){
  }
  async function compare(){if(busy)return;setBusy(true);await Promise.all(entries.map((e,i)=>e.data?Promise.resolve(e.data):load(i)));setBusy(false)}
  const results=useMemo(()=>entries.every(e=>e.data)?{songs:comparePlaylists(entries[0].data!,entries[1].data!,'songs'),artists:comparePlaylists(entries[0].data!,entries[1].data!,'artists')}:null,[entries]);
+ const counted=useRef<[Playlist,Playlist]|null>(null);
+ useEffect(()=>{startAnalytics()},[]);
+ useEffect(()=>{const a=entries[0].data,b=entries[1].data;if(!isDemo&&a&&b&&(counted.current?.[0]!==a||counted.current?.[1]!==b)){counted.current=[a,b];trackAnalytics('compare');}},[entries[0].data,entries[1].data,isDemo]);
  const partial=entries.some(e=>e.data&&!e.data.complete);
  function loadDemo(){if(entries.some(e=>e.loading))return;setEntries(demo.map(data=>({...blank(),data})));setIsDemo(true)}
  return <div className="app-shell">
