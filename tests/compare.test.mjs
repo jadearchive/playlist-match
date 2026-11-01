@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {comparePlaylists,songKey,splitArtists,toCsv} from '../lib/compare.mjs';
+import {comparePlaylists,songKey,splitArtists,toCsv,artistKey} from '../lib/compare.mjs';
 import {importPlaylist,parseApple,parseSpotify} from '../lib/importers.mjs';
 const p=tracks=>({tracks});
 test('version variants merge by song name, without using singer identity',()=>{
@@ -13,8 +13,48 @@ test('version variants merge by song name, without using singer identity',()=>{
 test('collaborators are separate artists; duplicates count once and bands remain intact',()=>{
  const a=p([{title:'x',artists:['A','B']},{title:'y',artists:['A','Earth, Wind & Fire']}]);
  const b=p([{title:'z',artists:['B','C']}]);
- const r=comparePlaylists(a,b,'artists');assert.equal(r.common[0].name,'B');assert.equal(r.aCount,3);assert.equal(r.bCount,2);assert.equal(r.union,4);assert.equal(r.overlap,.25);assert.equal(r.coverageA,1/3);
+ const r=comparePlaylists(a,b,'artists');assert.equal(r.common[0].name,'B');assert.equal(r.aCount,3);assert.equal(r.bCount,2);assert.equal(r.union,4);assert.equal(r.overlap,.25);assert.equal(r.coverageA,.25);
  assert.deepEqual(splitArtists('A / B、C'),['A','B','C']);assert.deepEqual(splitArtists(['AC/DC']),['AC/DC']);
+});
+test('song Dice uses unique normalized titles, with separate directional coverages',()=>{
+ const tracks=(prefix,n)=>Array.from({length:n},(_,i)=>({title:prefix+i,artists:['Singer']}));
+ const a=p(tracks('song',100)),b=p([...tracks('song',20),...tracks('other',30)]);
+ const r=comparePlaylists(a,b,'songs');assert.equal(r.common.length,20);assert.equal(r.overlap,40/150);assert.equal(r.coverageA,.2);assert.equal(r.coverageB,.4);
+ assert.equal(comparePlaylists(b,a,'songs').overlap,r.overlap);
+ const small=p(a.tracks.slice(0,10));assert.equal(comparePlaylists(a,small,'songs').overlap,20/110);
+});
+test('artist taste reflects 90 percent shared preference despite many unique artists',()=>{
+ const make=prefix=>p(Array.from({length:100},(_,i)=>({title:prefix+i,artists:[i<90?'Jay Chou':prefix+i]})));
+ const a=make('a'),b=make('b'),r=comparePlaylists(a,b,'artists');
+ assert.equal(r.common.length,1);assert.equal(r.aCount,11);assert.equal(r.overlap,.9);assert.equal(r.coverageA,.9);assert.equal(r.coverageB,.9);
+ assert.equal(comparePlaylists(b,a,'artists').overlap,r.overlap);
+ // Equal taste can use different songs and playlist sizes.
+ assert.equal(comparePlaylists(p(a.tracks.slice(0,90)),p(b.tracks.slice(0,3)),'artists').overlap,1);
+});
+test('collaboration splits one song equally after deduplicating artist aliases',()=>{
+ const a=p([{title:'collab',artists:['周杰倫','Jay Chou','梁心颐']}]);
+ const b=p([{title:'solo',artists:['周杰伦']}]);
+ const r=comparePlaylists(a,b,'artists');assert.equal(r.aCount,2);assert.equal(r.common[0].share,.5);assert.equal(r.common[0].otherShare,1);assert.equal(r.overlap,.5);
+ assert.equal(r.coverageA,.5);assert.equal(r.coverageB,1);
+ assert.equal(comparePlaylists(a,a,'artists').overlap,1);
+});
+test('opposite artist proportions stay distinct and contributions explain the score',()=>{
+ const make=names=>p(names.map((name,i)=>({title:String(i),artists:[name]})));
+ const a=make([...Array(9).fill('A'),'B']),b=make(['A',...Array(9).fill('B')]);
+ const r=comparePlaylists(a,b,'artists');assert.equal(r.overlap,.2);assert.equal(r.coverageA,1);assert.equal(r.coverageB,1);
+ assert.equal(r.common.reduce((sum,e)=>sum+e.contribution,0),r.overlap);
+ assert.equal(comparePlaylists(a,make(['C']),'artists').overlap,0);
+ assert.equal(comparePlaylists(p([]),p([]),'artists').overlap,null);
+ assert.equal(comparePlaylists(a,p([]),'artists').overlap,0);
+});
+test('limited aliases merge across languages without fuzzy merging unknown singers or bands',()=>{
+ for(const name of ['周杰伦','周杰倫',' JAY CHOU '])assert.equal(artistKey(name),artistKey('周杰伦'));
+ assert.equal(artistKey('陳奕迅'),artistKey('Eason Chan'));
+ assert.notEqual(artistKey('A-B'),artistKey('AB'));
+ assert.notEqual(artistKey('张三'),artistKey('張三'));
+ const r=comparePlaylists(p([{title:'a',artists:['Jay Chou','Eason Chan']}]),p([{title:'b',artists:['周杰倫','陳奕迅']}]),'artists');
+ assert.equal(r.common.length,2);assert.equal(r.overlap,1);
+ assert.deepEqual(splitArtists(['Earth, Wind & Fire','AC/DC']),['Earth, Wind & Fire','AC/DC']);
 });
 test('disjoint and empty playlists have honest denominators',()=>{
  assert.equal(comparePlaylists(p([]),p([]),'songs').overlap,null);
