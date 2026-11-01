@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>同频 · 私人访问统计</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/stats.css"><script src="/stats.js" defer></script></head>
 <body><main><p class="credit">by 原子核</p><header><a href="/">同频 <small>PLAYLIST MATCH</small></a><span class="badge">私人统计</span></header>
-<section class="intro"><p class="eyebrow">YOUR LITTLE MUSIC CORNER</p><h1>看看有多少人，<br>来发现同频。</h1><p>访问次数、近似访客数与成功对比次数，仅你登录后可见。</p></section>
+<section class="intro"><p class="eyebrow">YOUR LITTLE MUSIC CORNER</p><h1>看看有多少人，<br>来发现同频。</h1><p>每次访问与成功对比次数，仅你登录后可见。</p></section>
 <section id="login-panel" class="panel"><h2>查看访问统计</h2><form id="login-form"><label for="password">查看密码</label><div class="password-row"><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="200" placeholder="输入你的私人查看密码"><button type="submit">查看统计 →</button></div></form><p class="hint">密码保存在服务端验证，普通访客无法读取统计。</p></section>
 <p id="message" class="message" role="status" aria-live="polite"></p>
 <section id="dashboard" hidden><div class="toolbar"><div class="periods" role="group" aria-label="统计时间范围"><button data-period="all" aria-pressed="true">累计</button><button data-period="today" aria-pressed="false">今天</button><button data-period="week" aria-pressed="false">近 7 天</button></div><div class="actions"><button id="refresh">刷新</button><button id="export">导出 CSV</button><button id="logout">退出</button></div></div>
-<div class="metrics"><article><p>页面访问次数 <small>PV</small></p><strong id="views">—</strong><span>每次打开或刷新记一次</span></article><article><p>近似访客数 <small>UV</small></p><strong id="visitors">—</strong><span>同一浏览器去重统计</span></article><article><p>成功对比次数</p><strong id="comparisons">—</strong><span>生成真实结果，示例不计入</span></article></div>
-<section class="panel daily"><div class="table-heading"><h2>最近 30 天</h2><span>北京时间</span></div><div class="table-wrap"><table><thead><tr><th>日期</th><th>访问次数</th><th>近似访客数</th><th>成功对比</th></tr></thead><tbody id="daily-rows"></tbody></table></div></section>
-<p class="hint" id="updated"></p><p class="hint">从功能上线开始累计，之前的访问无法补记。同一人换设备或清理浏览器存储可能重复计数；广告拦截、禁用脚本或网络故障可能漏记。登录统计后，该浏览器的访问与对比不计入。统计不保存歌单内容、链接、IP 地址或完整浏览记录。</p></section>
+<div class="metrics"><article><p>页面访问次数 <small>PV</small></p><strong id="views">—</strong><span>每次打开或刷新记一次</span></article><article><p>成功对比次数</p><strong id="comparisons">—</strong><span>真实对比，示例不计入</span></article></div>
+<section class="panel daily"><div class="table-heading"><h2>最近 30 天</h2><span>北京时间</span></div><div class="table-wrap"><table><thead><tr><th>日期</th><th>访问次数</th><th>成功对比</th></tr></thead><tbody id="daily-rows"></tbody></table></div></section>
+<p class="hint" id="updated"></p><p class="hint">从功能上线开始累计，之前的访问无法补记。同一个人反复打开或刷新均累加，不做人数去重；广告拦截、禁用脚本或网络故障可能漏记。登录统计后，该浏览器的访问与对比不计入。统计不保存歌单内容、链接、IP 地址或完整浏览记录。</p></section>
 <footer><a href="/">← 回到同频</a><span>好音乐，让我们靠近一点。</span></footer></main></body></html>

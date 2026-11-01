@@ -6,7 +6,7 @@ import {createAnalytics,validateEvent} from '../lib/analytics.mjs';
 
 const password='test-only-password-never-used-on-production';
 const adminHash=createHash('sha256').update(password).digest('hex');
-const event={kind:'pageview',eventId:'event_1234567890123456',pageId:'page_1234567890123456',visitorId:'visitor_1234567890123456'};
+const event={kind:'pageview',eventId:'event_1234567890123456',pageId:'page_1234567890123456'};
 async function setup(t,{store,configured=true}={}){
  const records=[];let clock=Date.now();
  const analytics=createAnalytics({store:store||{async record(value){records.push(value)},async summary(){return {private:true,count:records.length}}},adminHash:configured?adminHash:'',secret:'test-only-random-secret-value-with-32-characters',origin:'https://example.test',secureCookies:true,now:()=>clock});
@@ -28,11 +28,11 @@ test('statistics require a server-validated session, never just a hidden URL',as
  assert.equal((await fetch(s.url+'/api/analytics/summary',{headers:{Cookie:session+'tampered'}})).status,401);
  s.advance(13*3600000);assert.equal((await fetch(s.url+'/api/analytics/summary',{headers:{Cookie:session}})).status,401);
 });
-test('events strip playlist details, hash visitor identity, and owner visits are excluded',async t=>{
+test('events strip playlist details, collect no visitor identity, and owner visits are excluded',async t=>{
  const s=await setup(t);
  assert.deepEqual(validateEvent({...event,url:'private-link',songs:['private-song']}),event);
  assert.equal((await s.post('event',{...event,url:'private-link'})).status,202);
- await new Promise(resolve=>setImmediate(resolve));assert.equal(s.records.length,1);assert.notEqual(s.records[0].visitorHash,event.visitorId);assert.equal(s.records[0].visitorHash.length,64);assert.equal(s.records[0].url,undefined);
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(s.records.length,1);assert.equal(s.records[0].visitorHash,undefined);assert.equal(s.records[0].visitorId,undefined);assert.equal(s.records[0].url,undefined);
  const login=await s.post('login',{password}),session=login.headers.get('set-cookie').split(';')[0];
  assert.equal((await s.post('event',event,{Cookie:session})).status,204);assert.equal(s.records.length,1);
  assert.equal((await s.post('event',{...event,kind:'demo'})).status,400);

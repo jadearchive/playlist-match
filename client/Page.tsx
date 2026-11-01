@@ -68,7 +68,7 @@ export default function Home(){
   try{let data:Playlist;if(entry.mode==='text')data=parseText(entry.input,`歌单 ${i===0?'A':'B'}`);else{const response=await fetch('/api/playlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:entry.input}),signal:typeof AbortSignal.timeout==='function'?AbortSignal.timeout(65000):undefined});const body=await response.json() as Playlist & {error?:string};if(!response.ok)throw new Error(body.error||'读取失败，请重试。');data=body;}change(i,{data,loading:false});return data;}
   catch(error){change(i,{loading:false,error:error instanceof Error?error.message:'读取失败，请重试。'});return null;}
  }
- async function compare(){if(busy)return;setBusy(true);await Promise.all(entries.map((e,i)=>e.data?Promise.resolve(e.data):load(i)));setBusy(false)}
+ async function compare(){if(busy)return;const alreadyLoaded=entries.every(e=>e.data);setBusy(true);const loaded=await Promise.all(entries.map((e,i)=>e.data?Promise.resolve(e.data):load(i)));if(alreadyLoaded&&!isDemo&&loaded.every(Boolean))trackAnalytics('compare');setBusy(false)}
  const results=useMemo(()=>entries.every(e=>e.data)?{songs:comparePlaylists(entries[0].data!,entries[1].data!,'songs'),artists:comparePlaylists(entries[0].data!,entries[1].data!,'artists')}:null,[entries]);
  const counted=useRef<[Playlist,Playlist]|null>(null);
  useEffect(()=>{startAnalytics()},[]);
