@@ -1,0 +1,9 @@
+{
+  "name":"playlist-match-portable",
+  "version":"0.1.0",
+  "private":true,
+  "type":"module",
+  "engines":{"node":">=22.13.0"},
+  "scripts":{"start":"node server.mjs","build":"node build.mjs","test":"node --test"},
+  "devDependencies":{"esbuild":"0.28.0","react":"19.2.6","react-dom":"19.2.6","lucide-react":"1.31.0"}
+}
