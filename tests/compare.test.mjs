@@ -16,12 +16,13 @@ test('collaborators are separate artists; duplicates count once and bands remain
  const r=comparePlaylists(a,b,'artists');assert.equal(r.common[0].name,'B');assert.equal(r.aCount,3);assert.equal(r.bCount,2);assert.equal(r.union,4);assert.equal(r.overlap,.4);assert.equal(r.coverageA,1/3);
  assert.deepEqual(splitArtists('A / B、C'),['A','B','C']);assert.deepEqual(splitArtists(['AC/DC']),['AC/DC']);
 });
-test('song Dice uses unique normalized titles, with separate directional coverages',()=>{
+test('song coverage uses the smaller unique title count, with separate directional coverages',()=>{
  const tracks=(prefix,n)=>Array.from({length:n},(_,i)=>({title:prefix+i,artists:['Singer']}));
  const a=p(tracks('song',100)),b=p([...tracks('song',20),...tracks('other',30)]);
- const r=comparePlaylists(a,b,'songs');assert.equal(r.common.length,20);assert.equal(r.overlap,40/150);assert.equal(r.coverageA,.2);assert.equal(r.coverageB,.4);
+ const r=comparePlaylists(a,b,'songs');assert.equal(r.common.length,20);assert.equal(r.overlap,20/50);assert.equal(r.coverageA,.2);assert.equal(r.coverageB,.4);
  assert.equal(comparePlaylists(b,a,'songs').overlap,r.overlap);
- const small=p(a.tracks.slice(0,10));assert.equal(comparePlaylists(a,small,'songs').overlap,20/110);
+ assert.equal(comparePlaylists(a,p(tracks('none',30)),'songs').overlap,0);
+ const small=p(a.tracks.slice(0,10));assert.equal(comparePlaylists(a,small,'songs').overlap,1);
 });
 test('artist Dice gives each distinct singer one vote regardless of number of songs',()=>{
  const make=prefix=>p(Array.from({length:100},(_,i)=>({title:prefix+i,artists:[i<90?'Jay Chou':prefix+i]})));
@@ -58,7 +59,7 @@ test('limited aliases merge across languages without fuzzy merging unknown singe
 });
 test('disjoint and empty playlists have honest denominators',()=>{
  assert.equal(comparePlaylists(p([]),p([]),'songs').overlap,null);
- assert.equal(comparePlaylists(p([{title:'a',artists:['x']}]),p([]),'songs').overlap,0);
+ assert.equal(comparePlaylists(p([{title:'a',artists:['x']}]),p([]),'songs').overlap,null);
 });
 test('CSV preserves Chinese and quotes while neutralizing formula values',()=>{
  const csv=toCsv([['歌名','歌手'],['=1+1','A,"B"']]);assert(csv.startsWith('\uFEFF'));assert(csv.includes("\"'=1+1\""));assert(csv.includes('"A,""B"""'));
