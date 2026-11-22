@@ -46,21 +46,21 @@ test('uses public legacy metadata when v3 omits a song, without losing artist cr
  const p=await loadNetease('1','https://music.163.com/playlist?id=1');assert.equal(p.tracks.length,12);assert(p.complete);assert.deepEqual(p.tracks[11].artists,['C','D']);assert.equal(legacyCalls,1);
 });
 
-test('retries metadata with form POST when GET is rejected, then fills all missing songs',async t=>{
+test('uses compatible metadata endpoint when preferred version is rejected, then fills all missing songs',async t=>{
  const methods=[];
  t.mock.method(globalThis,'fetch',async (url,options)=>{
   if(String(url).includes('/playlist/detail')){
-   methods.push(options.method);
-   if(options.method==='GET')return Response.json({code:20001});
-   assert.equal(new URLSearchParams(options.body).get('id'),'783044535');
-   assert.equal(options.headers['Content-Type'],'application/x-www-form-urlencoded');
+   methods.push(new URL(url).pathname);
+   if(String(url).includes('/v6/'))return Response.json({code:20001});
+   assert.equal(new URL(url).searchParams.get('id'),'783044535');
+   assert.equal(new URL(url).searchParams.get('n'),'1000');
    return Response.json(fixture(487,6));
   }
   const ids=JSON.parse(new URL(url).searchParams.get('c')).map(s=>s.id);
   return Response.json({code:200,songs:ids.map(song)});
  });
  const p=await loadNetease('783044535','https://music.163.com/playlist?id=783044535');
- assert.deepEqual(methods,['GET','POST']);assert.equal(p.tracks.length,487);assert(p.complete);
+ assert.deepEqual(methods,['/api/v6/playlist/detail','/api/v3/playlist/detail']);assert.equal(p.tracks.length,487);assert(p.complete);
 });
 
 test('metadata failures are bounded and do not falsely label a public link invalid',async t=>{
