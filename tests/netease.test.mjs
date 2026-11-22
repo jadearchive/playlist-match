@@ -74,9 +74,17 @@ test('verification challenge stops retries and logs only non-sensitive entry ava
  let calls=0;const logs=[];
  t.mock.method(console,'warn',(...args)=>logs.push(args));
  t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({code:-462,message:'请完成验证操作',data:{verifyType:50,verifyUrl:'https://music.163.com/verify?token=private-secret',verifyToken:'private-secret',params:{sign:'private-signature'}}})});
- await assert.rejects(loadNetease('1','https://music.163.com/playlist?id=1'),/暂未向本站返回/);
+ await assert.rejects(loadNetease('verification-fixture','https://music.163.com/playlist?id=verification-fixture'),/额外安全验证/);
  assert.equal(calls,1);
  const diagnostic=JSON.parse(logs.find(row=>row[0].includes('verification requirements'))[1]);
  assert.equal(diagnostic.hasWebEntry,true);assert.equal(diagnostic.asksVerification,true);
  assert(!JSON.stringify(logs).includes('private-secret'));assert(!JSON.stringify(logs).includes('private-signature'));
+});
+
+test('verification challenge is cooled down without extra upstream requests',async t=>{
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({code:-462,message:'请完成验证',data:{verifyType:40,verifyUrl:'https://music.163.com/verify?token=secret'}})});
+ await assert.rejects(loadNetease('cooldown-fixture','https://music.163.com/playlist?id=cooldown-fixture'),/额外安全验证/);
+ await assert.rejects(loadNetease('cooldown-fixture','https://music.163.com/playlist?id=cooldown-fixture'),/额外安全验证/);
+ assert.equal(calls,1);
 });
