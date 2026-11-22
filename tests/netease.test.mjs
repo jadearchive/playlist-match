@@ -66,7 +66,7 @@ test('uses compatible metadata endpoint when preferred version is rejected, then
 test('metadata failures are bounded and do not falsely label a public link invalid',async t=>{
  let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({code:20001})});
  await assert.rejects(loadNetease('1','https://music.163.com/playlist?id=1'),/暂未向本站返回/);
- assert.equal(calls,2);
+ assert.equal(calls,1);
 });
 
 
