@@ -88,3 +88,17 @@ test('verification challenge is cooled down without extra upstream requests',asy
  await assert.rejects(loadNetease('cooldown-fixture','https://music.163.com/playlist?id=cooldown-fixture'),/额外安全验证/);
  assert.equal(calls,1);
 });
+
+test('configured parser recovers a public playlist after upstream verification',async t=>{
+ const old=process.env.NETEASE_PLAYLIST_PARSER_URL;
+ process.env.NETEASE_PLAYLIST_PARSER_URL='https://parser.example.test/playlist';
+ t.after(()=>{if(old===undefined)delete process.env.NETEASE_PLAYLIST_PARSER_URL;else process.env.NETEASE_PLAYLIST_PARSER_URL=old;});
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async url=>{
+  calls++;
+  if(String(url).startsWith('https://parser.example.test/'))return Response.json({ok:true,title:'Public playlist',count:2,songs:[{name:'Song A',artist:'Artist A'},{name:'Song B',artist:'Artist B'}]});
+  return Response.json({code:-462,message:'请完成验证',data:{verifyType:40}});
+ });
+ const result=await loadNetease('fallback-fixture','https://music.163.com/playlist?id=fallback-fixture');
+ assert.equal(result.complete,false);assert.equal(result.tracks.length,2);assert.equal(result.tracks[0].artists[0],'Artist A');assert.equal(calls,2);
+});
