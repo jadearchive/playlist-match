@@ -100,5 +100,5 @@ test('configured parser recovers a public playlist after upstream verification',
   return Response.json({code:-462,message:'请完成验证',data:{verifyType:40}});
  });
  const result=await loadNetease('fallback-fixture','https://music.163.com/playlist?id=fallback-fixture');
- assert.equal(result.complete,false);assert.equal(result.tracks.length,2);assert.equal(result.tracks[0].artists[0],'Artist A');assert.equal(calls,2);
+ assert.equal(result.complete,false);assert.equal(result.tracks.length,2);assert.equal(result.tracks[0].artists[0],'Artist A');assert.equal(calls,1);
 });
