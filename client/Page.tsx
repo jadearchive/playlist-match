@@ -26,6 +26,35 @@ function parseText(text:string,title:string):Playlist {
  if(tracks.length>10000)throw new Error('测试版每张歌单最多支持 10000 首。');
  return {title,platform:'手动粘贴',tracks,total:tracks.length,complete:true,warnings:[]};
 }
+function parseFile(text:string,filename:string):Playlist {
+ const cleaned=text.replace(/^\uFEFF/u,'').trim();
+ if(!cleaned)throw new Error('文件内容为空。');
+ const rows=cleaned.split(/\r?\n/u).filter(line=>line.trim());
+ if(rows.length>10001)throw new Error('每张歌单最多支持 10000 首歌曲。');
+ const isCsv=/\.csv$/iu.test(filename);
+ const parseCsvLine=(line:string):string[]=>{
+  const cells:string[]=[];let cell='';let quoted=false;
+  for(let i=0;i<line.length;i++){
+   const ch=line[i];
+   if(ch==='"'){if(quoted&&line[i+1]==='"'){cell+='"';i++}else quoted=!quoted}
+   else if(ch===','&&!quoted){cells.push(cell.trim());cell=''}
+   else cell+=ch;
+  }
+  if(quoted)throw new Error('CSV 引号不完整，请检查文件格式。');
+  cells.push(cell.trim());return cells;
+ };
+ const tracks:Track[]=[];
+ for(let i=0;i<rows.length;i++){
+  const line=rows[i];const cells=isCsv?parseCsvLine(line):line.includes('\t')?line.split('\t'):line.split(/\s+[-–—]\s+/u);
+  if(i===0&&/^(歌名|歌曲|title|song)$/iu.test((cells[0]||'').trim())&&/^(歌手|艺人|artist|artists)$/iu.test((cells[1]||'').trim()))continue;
+  if(cells.length<2||!cells[0].trim()||!cells[1].trim())throw new Error(`文件第 ${i+1} 行缺少歌名或歌手，请使用“歌名,歌手”两列。`);
+  const artists=splitArtists(cells.slice(1).join(' / '));
+  if(!artists.length)throw new Error(`文件第 ${i+1} 行歌手为空。`);
+  tracks.push({title:cells[0].trim(),artists});
+ }
+ if(!tracks.length)throw new Error('文件中没有有效曲目。');
+ return {title:filename.replace(/\.(csv|tsv|txt)$/iu,''),platform:'本地文件导入',tracks,total:tracks.length,complete:true,warnings:[]};
+}
 function Wave({small=false}:{small?:boolean}){return <span aria-hidden="true" className={`wave ${small?'small':''}`}><i/><i/><i/><i/><i/></span>}
 function PlaylistCard({entry,index,change,load}:{entry:Entry;index:number;change:(p:Partial<Entry>)=>void;load:()=>void}){
  const letter=index===0?'A':'B';
@@ -34,6 +63,7 @@ function PlaylistCard({entry,index,change,load}:{entry:Entry;index:number;change
   <div className="input-tabs" aria-label={`歌单 ${letter} 导入方式`}><button type="button" aria-pressed={entry.mode==='link'} className={entry.mode==='link'?'selected':''} disabled={entry.loading} onClick={()=>change({mode:'link',input:'',data:null,error:''})}><Link2 size={14}/>歌单链接</button><button type="button" aria-pressed={entry.mode==='text'} className={entry.mode==='text'?'selected':''} disabled={entry.loading} onClick={()=>change({mode:'text',input:'',data:null,error:''})}>粘贴曲目</button></div>
   <label className="sr-only" htmlFor={`input-${letter}`}>{`歌单 ${letter} ${entry.mode==='link'?'链接':'曲目'}`}</label>
   {entry.mode==='link'?<div className="link-field"><Link2 size={17}/><input id={`input-${letter}`} inputMode="url" autoComplete="off" placeholder="粘贴公开歌单的分享链接" value={entry.input} disabled={entry.loading} onChange={e=>change({input:e.target.value,data:null,error:''})}/>{entry.input&&!entry.loading&&<button className="clear" type="button" aria-label={`清空歌单 ${letter}`} onClick={()=>change({input:'',data:null,error:''})}><X size={15}/></button>}</div>:<textarea id={`input-${letter}`} placeholder={'每行一首：歌名 - 歌手\n合唱用 / 分隔：珊瑚海 - 周杰伦 / 梁心颐\n也可以直接粘贴 Excel 的歌名、歌手两列'} value={entry.input} disabled={entry.loading} onChange={e=>change({input:e.target.value,data:null,error:''})}/>}
+  <div className="file-import"><label htmlFor={`file-${letter}`}>或导入本地 CSV / TSV / TXT 歌单文件</label><input id={`file-${letter}`} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" disabled={entry.loading} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2_000_000)throw new Error('文件超过 2 MB，请拆分后导入。');const text=await file.text();change({mode:'text',input:text,data:parseFile(text,file.name),error:''});}catch(error){change({data:null,error:error instanceof Error?error.message:'文件读取失败。'});}finally{e.target.value='';}}}/></div>
   {entry.error&&<p className="error" role="alert">{entry.error}</p>}
   {entry.data?<div className="loaded"><span className="loaded-check"><Check size={16}/></span><div><strong>{entry.data.title}</strong><span>{entry.data.platform} · {entry.data.tracks.length} 首{entry.data.complete?' · 数量已核对':' · 完整性未确认'}</span></div><button onClick={load} disabled={entry.loading||!entry.input} type="button">重新读取</button></div>:<div className="card-bottom"><span>{entry.mode==='link'?'支持四个平台的公开歌单':'歌名与歌手用 Tab 或「 - 」分隔'}</span><button type="button" onClick={load} disabled={!entry.input.trim()||entry.loading}>{entry.loading?<><LoaderCircle className="spin" size={14}/>读取中</>:<>读取<ArrowRight size={14}/></>}</button></div>}
  </section>
@@ -65,7 +95,7 @@ export default function Home(){
  const change=(i:number,patch:Partial<Entry>)=>{setIsDemo(false);setEntries(prev=>prev.map((e,j)=>j===i?{...e,...patch}:e))};
  async function load(i:number){
   const entry=entries[i];if(!entry.input.trim()||entry.loading)return null;change(i,{loading:true,error:'',data:null});
-  try{let data:Playlist;if(entry.mode==='text')data=parseText(entry.input,`歌单 ${i===0?'A':'B'}`);else{const response=await fetch('/api/playlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:entry.input}),signal:typeof AbortSignal.timeout==='function'?AbortSignal.timeout(65000):undefined});const body=await response.json() as Playlist & {error?:string};if(!response.ok)throw new Error(body.error||'读取失败，请重试。');data=body;}change(i,{data,loading:false});return data;}
+  try{let data:Playlist;if(entry.mode==='text')data=entry.data??parseText(entry.input,`歌单 ${i===0?'A':'B'}`);else{const response=await fetch('/api/playlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:entry.input}),signal:typeof AbortSignal.timeout==='function'?AbortSignal.timeout(65000):undefined});const body=await response.json() as Playlist & {error?:string};if(!response.ok)throw new Error(body.error||'读取失败，请重试。');data=body;}change(i,{data,loading:false});return data;}
   catch(error){change(i,{loading:false,error:error instanceof Error?error.message:'读取失败，请重试。'});return null;}
  }
  async function compare(){if(busy)return;const alreadyLoaded=entries.every(e=>e.data);setBusy(true);const loaded=await Promise.all(entries.map((e,i)=>e.data?Promise.resolve(e.data):load(i)));if(alreadyLoaded&&!isDemo&&loaded.every(Boolean))trackAnalytics('compare');setBusy(false)}
