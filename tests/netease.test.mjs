@@ -102,3 +102,19 @@ test('configured parser recovers a public playlist after upstream verification',
  const result=await loadNetease('fallback-fixture','https://music.163.com/playlist?id=fallback-fixture');
  assert.equal(result.complete,false);assert.equal(result.tracks.length,2);assert.equal(result.tracks[0].artists[0],'Artist A');assert.equal(calls,1);
 });
+
+test('GoMusic structured tracks are preferred over NetEase direct requests',async t=>{
+ const old=process.env.GOMUSIC_API_URL;
+ process.env.GOMUSIC_API_URL='https://music.unmeta.cn/api/v1/songlists';
+ t.after(()=>{if(old===undefined)delete process.env.GOMUSIC_API_URL;else process.env.GOMUSIC_API_URL=old;});
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async (url,options)=>{
+  calls++;
+  assert.equal(String(url),'https://music.unmeta.cn/api/v1/songlists');
+  assert.equal(options.method,'POST');
+  assert.equal(JSON.parse(options.body).url,'https://music.163.com/playlist?id=gomusic-fixture');
+  return Response.json({code:1,msg:'success',data:{name:'Test',source:'netease',tracks:[{id:'1',title:'Song',artists:['Artist']}],songs_count:1,total_count:1,complete:true,warnings:[]}});
+ });
+ const result=await loadNetease('gomusic-fixture','https://music.163.com/playlist?id=gomusic-fixture');
+ assert.equal(calls,1);assert.equal(result.tracks[0].title,'Song');assert.equal(result.complete,true);
+});
