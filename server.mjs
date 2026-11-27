@@ -39,3 +39,19 @@ const server=http.createServer(async(req,res)=>{
 server.requestTimeout=70000;
 server.listen(Number(process.env.PORT||3000),process.env.HOST||'0.0.0.0',()=>{console.log(`Playlist Match listening on port ${server.address().port}`)});
 for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>server.close(async()=>{try{await analyticsStore?.close()}finally{process.exit(0)}}));
+
+// Temporary bounded server-side connectivity check; expires without repeating indefinitely.
+if(process.env.RENDER && Date.now()<Date.parse('2026-11-27T07:20:00Z')){
+ void (async()=>{
+ try{
+ const {createHash}=await import('node:crypto');
+ const stamp=String(Date.now());
+ const p={srcappid:'2919',clientver:'20000',clienttime:stamp,mid:'-',uuid:stamp,dfid:'-',appid:'1058',uid:'0',token:'',type:'0',module:'playlist',page:'1',pagesize:'20',global_collection_id:'collection_3_1790458540_98_0'};
+ const key='NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt';
+ p.signature=createHash('md5').update(key+Object.keys(p).sort().map(k=>k+'='+p[k]).join('')+key).digest('hex');
+ const r=await fetch('https://pubsongscdn.kugou.com/v2/get_other_list_file?'+new URLSearchParams(p),{signal:AbortSignal.timeout(15000)});
+ const d=await r.json();const songs=d.data?.info||[];
+ console.log('[kugou-probe]',JSON.stringify({http:r.status,code:d.error_code,total:d.data?.count,received:songs.length,unique:new Set(songs.map(s=>s.fileid)).size,withNames:songs.filter(s=>s.name&&s.singerinfo?.length).length}));
+ }catch(e){console.log('[kugou-probe]',JSON.stringify({error:e.name}));}
+ })();
+}
