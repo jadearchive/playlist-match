@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {loadNetease} from '../lib/importers.mjs';
+import {loadNetease,importPlaylist} from '../lib/importers.mjs';
 const song=id=>({id,name:`Song ${id}`,ar:[{name:'A'},{name:'B'}]});
 const fixture=(count,returned=10)=>({code:200,playlist:{name:'Test playlist',trackCount:count,tracks:Array.from({length:returned},(_,i)=>song(i+1)),trackIds:Array.from({length:count},(_,i)=>({id:i+1}))}});
 test('fills a 591-track playlist from the initial ten, preserving order and collaborators',async t=>{
@@ -117,4 +117,12 @@ test('GoMusic structured tracks are preferred over NetEase direct requests',asyn
  });
  const result=await loadNetease('gomusic-fixture','https://music.163.com/playlist?id=gomusic-fixture');
  assert.equal(calls,1);assert.equal(result.tracks[0].title,'Song');assert.equal(result.complete,true);
+});
+
+test('Kugou mobile GCID links use GoMusic',async t=>{
+ const old=process.env.GOMUSIC_API_URL;process.env.GOMUSIC_API_URL='https://music.unmeta.cn/api/v1/songlists';
+ t.after(()=>{if(old===undefined)delete process.env.GOMUSIC_API_URL;else process.env.GOMUSIC_API_URL=old;});
+ const link='https://m.kugou.com/songlist/gcid_3zk7volqz5hz0c8/?src_cid=3zk7volqz5hz0c8';
+ t.mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(JSON.parse(options.body).url,link);return Response.json({code:1,data:{source:'kugou',name:'FQ',tracks:[{title:'Lý Trí',artists:['Trang Pháp']}],total_count:1,complete:true}})});
+ const p=await importPlaylist(link);assert.equal(p.platform,'酷狗音乐');assert.equal(p.title,'FQ');assert.equal(p.tracks[0].title,'Lý Trí');assert.equal(p.complete,true);
 });
